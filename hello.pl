@@ -4,7 +4,7 @@ use utf8;
 use Text::CSV;
 
 sub main{
-    my $file = "C:/Users/jlu39/Desktop/jerry.txt";
+    my $file = "C:/Users/jlu39/Desktop/workspace/jerry.txt";
     open(my $FH, '<', $file) or die ("File $file not found");
     my $counter = 0;
     while(my $line = <$FH>){

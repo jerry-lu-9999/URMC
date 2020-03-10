@@ -98,7 +98,7 @@ sub regex{
                 $sign = $sign || 0;
             }
         }
-        if($line =~ /(?:fever |temperature |Tmax )(?:\S+\s+){1,4}(\d{2,3}\.?\d?)/){
+        if($line =~ /(?:fever |temperature |Tmax )(?:\S+\s+){1,4}(\d{2,3}\.?\d?)/i){
             #print "sdfa";
             my $match = $1;
             if($match >= 100.4){
