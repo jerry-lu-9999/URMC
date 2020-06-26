@@ -25,8 +25,8 @@ sub main{
         my $boolean = 0;                                                     #default as no fever                                                            #link encounter with boolean
         my $letter;
         my $prevIndex = 0;
-        for(my $index = 0; $index <= (scalar @encounter)-2; $index++){                                                                            #prevent indexOutOfBound
-            if($encounter[$index+1] == $encounter[$index]){    
+        for(my $index = 1; $index <= (scalar @encounter)-2; $index++){                                   #prevent indexOutOfBound
+            if($encounter[$index] eq $encounter[$index+1]){    
                 $boolean = $boolean || regex($notes[$index]);  
             }else{
                 $hash{$encounter[$index]}{$manual[$prevIndex]} = $boolean;                    #new encounter id
@@ -64,7 +64,6 @@ sub main{
         print "\nE  ---------\n";
         print "S   "; print (scalar @ctrAfButPos); print "  | "; print (scalar @trueAf);
         print "\nT\n";
-        #print "With "; print (scalar @empty); print " entries";
         print "Afebrile but diagnosed as febrile are\n";
         print Dumper(\@ctrAfButPos);
         print "\nFebrile but diagnosed as Afebrile\n";

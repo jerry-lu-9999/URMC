@@ -22,8 +22,8 @@ start_time = time.time()
 # WHAT DOES THIS DO EVEN
 np.random.seed(500)
 
-corpus = pd.read_csv(r"C:/Users/jlu39/Desktop/2017 Master Notes Data.12.9.19.csv", encoding='latin-1', header=0,
-                     usecols=[2, 18, 22])
+corpus = pd.read_csv(r"C:/Users/jlu39/Desktop/2016 Notes Data.csv", encoding='latin-1', header=0,
+                     usecols=[2, 9, 13])
 
 master_Dict = {}
 nest_dict = {}
@@ -40,7 +40,7 @@ for index in range(len(corpus.index) - 1):
     if pd.notnull(corpus.iloc[index, corpus.columns.get_loc('Fever?')]):
         fever = corpus.iloc[index, corpus.columns.get_loc('Fever?')]
     else:
-        if not list_for_note and seen == False:
+        if not list_for_note and seen is False:
             list_for_empty_diag.append(enc_id)
 
     if not pattern.match(note):
@@ -53,7 +53,8 @@ for index in range(len(corpus.index) - 1):
             nest_dict['Fever?'] = fever
             nest_dict['note'] = master_Dict[enc_id]['note'] + "".join(str(e) for e in list_for_note)
             master_Dict[enc_id] = nest_dict
-            list_for_empty_diag.remove(enc_id)
+            if enc_id in list_for_empty_diag:
+                list_for_empty_diag.remove(enc_id)
         else:
             nest_dict['Fever?'] = fever
             nest_dict['note'] = "".join(str(e) for e in list_for_note)
@@ -62,7 +63,8 @@ for index in range(len(corpus.index) - 1):
         nest_dict = {}
         seen = False
 
-print("the size of 2017 is ", len(master_Dict))
+print(master_Dict[5000992847])
+print("the size of 2016 is ", len(master_Dict))
 print("These patient id doesn't have a manual diagnoses: ", list_for_empty_diag)
 
 df = pd.DataFrame.from_dict(master_Dict, orient='index')
@@ -214,8 +216,6 @@ SVM = svm.SVC(C=10.0, kernel='sigmoid', degree=2, gamma='scale')
 SVM.fit(Train_X_Tfidf, Train_Y)
 predictions_SVM = SVM.predict(Test_X_Tfidf)
 
-# print(search.best_estimator_)
-
 """
 Kernel functions give us similarity scores from higher dimensions
 The higher gamma is, the more likely overfitting occurs
@@ -224,40 +224,7 @@ The higher gamma is, the more likely overfitting occurs
 True       negative	   TN       FP
            positive    FN       TP
 C: the penalty parameter, higher it is, the finer the boundaries between classification is
-
-C=1.0, RBF, DEGREE = 3, SCALE (Gamma is more related to rbf kernel)
-                       314      3
-                       30       52
-        SVM Accuracy Score -> 91.729323
-C=1.0, Poly, DEGREE= 2, SCALE
-                       314      28
-                       3        54
-        SVM Accuracy Score -> 92.23057644110276
-        2616.26 seconds
-C=1.0, Poly, DEGREE = 2, AUTO
-                       317      82
-                       0        0
-        SVM Accuracy Score -> 79.4486215538847
-        2704.6 seconds
-C=10.0, Poly, degree = 2, SCALE
-                        313     23
-                        4       59
-        SVM Accuracy Score -> 93.23308270676691           
-        3065.62 seconds
-C=50, Poly, degree 2, scale
-                        313     23
-                        4       59
-        SVM Accuracy Score -> 93.23308270676691
-        2893.85 seconds
-C=10.0, sigmoid', degree=2, 'scale'   (By GridSearchCV)
-                        306     17
-                        11      65
-        SVM Accuracy Score -> 92.98245614035088
-        2569.87 seconds ---    
-        ---------------------------with bigram model
-                        300     25
-                        17      57    
-        SVM Accuracy Score -> 89.463684           
+      
 Recall/Sensitivity = TP / (TP + FN)
 Precision = TP / (TP + FP)
 Accuracy = (TP + TN) / (ALL FOUR)
@@ -271,16 +238,3 @@ print("SVM Accuracy Score ->", accuracy_score(predictions_SVM, Test_Y) * 100)
 print("---%s seconds ---" % round(time.time() - start_time, 2))
 
 plt.show()
-# number of digits of precision for floating point
-# np.set_printoptions(precision=2)
-# titles_options = [("Confusion matrix, without normalization", None),
-#                   ("Normalized Confusion Matrix", 'true')]
-#
-# for title, normalize in titles_options:
-#     disp = plot_confusion_matrix(classifier, Test_X_Tfidf, Test_Y, display_labels = ['Febrile', 'Afebrile'],
-#                                  cmap=plt.cm.Blues,
-#                                  normalize=normalize)
-#     disp.ax_.set_title(title)
-#     print(title)
-#     print(disp.confusion_matrix)
-# plt.show()

@@ -22,51 +22,60 @@ start_time = time.time()
 # WHAT DOES THIS DO EVEN
 np.random.seed(500)
 
-corpus = pd.read_csv(r"C:/Users/jlu39/Desktop/2017 Master Notes Data.12.9.19.csv", encoding='latin-1', header=0,
+corpus2017 = pd.read_csv(r"C:/Users/jlu39/Desktop/2017 Master Notes Data.12.9.19.csv", encoding='latin-1', header=0,
                      usecols=[2, 18, 22])
+corpus2016 = pd.read_csv(r"C:/Users/jlu39/Desktop/2016 Notes Data.csv", encoding='latin-1', header=0,
+                     usecols=[2, 9, 13])
+corpus_list = [corpus2016, corpus2017]
+master_dict_list = []
 
-master_Dict = {}
-nest_dict = {}
-list_for_note = []
-list_for_empty_diag = []
 seen = False
-
 pattern = re.compile('       GOLISANO|                         After Visit Summary')
-for index in range(len(corpus.index) - 1):
-    note = corpus.iloc[index, corpus.columns.get_loc('note')]
-    enc_id = corpus.iloc[index, corpus.columns.get_loc('pat_enc_csn_id')]
-    next_enc_id = corpus.iloc[index + 1, corpus.columns.get_loc('pat_enc_csn_id')]
 
-    if pd.notnull(corpus.iloc[index, corpus.columns.get_loc('Fever?')]):
-        fever = corpus.iloc[index, corpus.columns.get_loc('Fever?')]
-    else:
-        if not list_for_note and seen == False:
-            list_for_empty_diag.append(enc_id)
+for corpus in corpus_list:
+    master_dict = {}
+    nest_dict = {}
+    list_for_note = []
+    list_for_empty_diag = []
+    for index in range(len(corpus.index) - 1):
+        note = corpus.iloc[index, corpus.columns.get_loc('note')]
+        enc_id = corpus.iloc[index, corpus.columns.get_loc('pat_enc_csn_id')]
+        next_enc_id = corpus.iloc[index + 1, corpus.columns.get_loc('pat_enc_csn_id')]
 
-    if not pattern.match(note):
-        list_for_note.append(note)
-    else:
-        seen = True
-
-    if (not enc_id == next_enc_id) or (index == len(corpus.index) - 2):
-        if enc_id in master_Dict.keys():
-            nest_dict['Fever?'] = fever
-            nest_dict['note'] = master_Dict[enc_id]['note'] + "".join(str(e) for e in list_for_note)
-            master_Dict[enc_id] = nest_dict
-            list_for_empty_diag.remove(enc_id)
+        if pd.notnull(corpus.iloc[index, corpus.columns.get_loc('Fever?')]):
+            fever = corpus.iloc[index, corpus.columns.get_loc('Fever?')]
         else:
-            nest_dict['Fever?'] = fever
-            nest_dict['note'] = "".join(str(e) for e in list_for_note)
-            master_Dict[enc_id] = nest_dict
-        list_for_note = []
-        nest_dict = {}
-        seen = False
+            if not list_for_note and seen is False:
+                list_for_empty_diag.append(enc_id)
 
-print("the size of 2017 is ", len(master_Dict))
-print("These patient id doesn't have a manual diagnoses: ", list_for_empty_diag)
+        if not pattern.match(note):
+            list_for_note.append(note)
+        else:
+            seen = True
 
-df = pd.DataFrame.from_dict(master_Dict, orient='index')
-df['enc_id'] = df.index
+        if (not enc_id == next_enc_id) or (index == len(corpus.index) - 2):
+            if enc_id in master_dict.keys():
+                nest_dict['Fever?'] = fever
+                nest_dict['note'] = master_dict[enc_id]['note'] + "".join(str(e) for e in list_for_note)
+                master_dict[enc_id] = nest_dict
+                if enc_id in list_for_empty_diag:
+                    list_for_empty_diag.remove(enc_id)
+            else:
+                nest_dict['Fever?'] = fever
+                nest_dict['note'] = "".join(str(e) for e in list_for_note)
+                master_dict[enc_id] = nest_dict
+            list_for_note = []
+            nest_dict = {}
+            seen = False
+    master_dict_list.append(master_dict)
+
+print("the size of 2016 is ", len(master_dict_list[0]))
+
+df_list = []
+for master_dict in  master_dict_list:
+    df = pd.DataFrame.from_dict(master_dict, orient='index')
+    df['enc_id'] = df.index
+    df_list.append(df)
 
 tag_map = defaultdict(lambda: wn.NOUN)
 tag_map['J'] = wn.ADJ
@@ -74,20 +83,28 @@ tag_map['V'] = wn.VERB
 tag_map['R'] = wn.ADV
 
 # Giving each word a tag and filtering out useless data such as :a, an
-for index, entry in enumerate(df['note']):
-    Final_words = []
-    word_lemmatized = WordNetLemmatizer()
-    entry = word_tokenize(entry.lower())
-    for word, tag in pos_tag(entry):
-        if word not in stopwords.words('english'):
-            word_Final = word_lemmatized.lemmatize(word, tag_map[tag[0]])
-            Final_words.append(word_Final)
-    enc_id = df.iloc[index, df.columns.get_loc('enc_id')]
-    df.loc[enc_id, 'note_final'] = " ".join(str(e) for e in Final_words)
+for df in df_list:
+    for index, entry in enumerate(df['note']):
+        Final_words = []
+        word_lemmatized = WordNetLemmatizer()
+        entry = word_tokenize(entry.lower())
+        for word, tag in pos_tag(entry):
+            if word not in stopwords.words('english'):
+                word_Final = word_lemmatized.lemmatize(word, tag_map[tag[0]])
+                Final_words.append(word_Final)
+        enc_id = df.iloc[index, df.columns.get_loc('enc_id')]
+        df.loc[enc_id, 'note_final'] = " ".join(str(e) for e in Final_words)
 print("--- lemmatization finished: %s seconds ---" % round(time.time() - start_time, 2))
 
+print(len(df_list))
 # transform dataset into numerical value that the model can understand
-Train_X, Test_X, Train_Y, Test_Y = model_selection.train_test_split(df['note_final'], df['Fever?'], test_size=0.3)
+df2017 = df_list[1]
+df2016 = df_list[0]
+
+Train_X= df2017['note_final']
+Train_Y = df2017['Fever?']
+Test_X = df2016['note_final']
+Test_Y = df2016['Fever?']
 Encoder = LabelEncoder()
 Train_Y = Encoder.fit_transform(Train_Y)
 Test_Y = Encoder.fit_transform(Test_Y)
@@ -97,9 +114,10 @@ Test_Y = Encoder.fit_transform(Test_Y)
 # number of times a word appear in a given sentence -- log to the base e of number of the total documents divided by the documents in which the word appears.
 # max_feature means the maximum unique words/features we can have
 Tfidf_vect = TfidfVectorizer(max_features=5000, ngram_range=(1, 2))
-Tfidf_vect.fit(df['note_final'])
+Tfidf_vect.fit(df2017['note_final'])
 Train_X_Tfidf = Tfidf_vect.transform(Train_X)
 Test_X_Tfidf = Tfidf_vect.transform(Test_X)
+
 
 def reverse_confusion_matrix(index, accuracy, precision, recall, total_size):
     TN, TP, FP, FN = symbols('TN TP FP FN')
@@ -108,19 +126,21 @@ def reverse_confusion_matrix(index, accuracy, precision, recall, total_size):
     print(recall[index])
     print(total_size[index])
 
-#   Eq(lhs, rhs)
-    eq1 = Eq(TP-precision[index]*TP,precision[index]*FP)
-    eq2 = Eq(TP-recall[index]*TP,recall[index]*FN)
-    eq3 = Eq(FN+FP,(1-accuracy[index])*total_size[index])
-    eq4 = Eq(TN+TP, accuracy[index]*total_size[index])
+    #   Eq(lhs, rhs)
+    eq1 = Eq(TP - precision[index] * TP, precision[index] * FP)
+    eq2 = Eq(TP - recall[index] * TP, recall[index] * FN)
+    eq3 = Eq(FN + FP, (1 - accuracy[index]) * total_size[index])
+    eq4 = Eq(TN + TP, accuracy[index] * total_size[index])
     sol = solve((eq1, eq2, eq3, eq4), (TN, TP, FP, FN))
 
     print(sol)
+
 
 """
 Second plot shows the time required to train each sizes of the training dataset
 Third plot shows how much time required to train each training sizes
 """
+
 
 def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None, n_jobs=None,
                         train_sizes=np.linspace(0.1, 1.0, 5)):
@@ -132,21 +152,23 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None, n
     axes[0].set_xlabel("Training Samples")
     axes[0].set_ylabel("Score")
 
-    train_sizes, train_scores, accuracy_test_scores, fit_times, _ = learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
-                                                                          scoring='accuracy',
-                                                                          train_sizes=train_sizes, return_times=True)
-    _, _, precision_test_scores = learning_curve(estimator, X, y, cv=cv, n_jobs = n_jobs,
+    train_sizes, train_scores, accuracy_test_scores, fit_times, _ = learning_curve(estimator, X, y, cv=cv,
+                                                                                   n_jobs=n_jobs,
+                                                                                   scoring='accuracy',
+                                                                                   train_sizes=train_sizes,
+                                                                                   return_times=True)
+    _, _, precision_test_scores = learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
                                                  scoring='precision', train_sizes=train_sizes)
-    _, _, recall_test_scores = learning_curve(estimator, X, y, cv = cv, n_jobs=n_jobs,
+    _, _, recall_test_scores = learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
                                               scoring='recall', train_sizes=train_sizes)
 
     train_scores_mean = np.mean(train_scores, axis=1)
     train_scores_std = np.std(train_scores, axis=1)
-    accuracy_test_scores_mean = np.mean(accuracy_test_scores, axis=1) #cross validation score
+    accuracy_test_scores_mean = np.mean(accuracy_test_scores, axis=1)  # cross validation score
     accuracy_test_scores_std = np.std(accuracy_test_scores, axis=1)
     precision_test_scores_mean = np.mean(precision_test_scores, axis=1)
-    precision_test_scores_std = np.std(precision_test_scores, axis = 1)
-    recall_test_scores_mean = np.mean(recall_test_scores, axis = 1)
+    precision_test_scores_std = np.std(precision_test_scores, axis=1)
+    recall_test_scores_mean = np.mean(recall_test_scores, axis=1)
     recall_test_scores_std = np.std(recall_test_scores, axis=1)
     fit_times_mean = np.mean(fit_times, axis=1)
     fit_times_std = np.std(fit_times, axis=1)
@@ -159,11 +181,11 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None, n
                          accuracy_test_scores_mean + accuracy_test_scores_std, alpha=0.1,
                          color="b")
     axes[0].fill_between(train_sizes, precision_test_scores_mean - precision_test_scores_std,
-                         precision_test_scores_mean + precision_test_scores_std, alpha = 0.1,
+                         precision_test_scores_mean + precision_test_scores_std, alpha=0.1,
                          color='y')
     axes[0].fill_between(train_sizes, recall_test_scores_mean - recall_test_scores_std,
-                         recall_test_scores_mean + recall_test_scores_std, alpha = 0.1,
-                         color = 'g')
+                         recall_test_scores_mean + recall_test_scores_std, alpha=0.1,
+                         color='g')
     axes[0].plot(train_sizes, train_scores_mean, 'o-', color="r",
                  label="Training score")
     axes[0].plot(train_sizes, accuracy_test_scores_mean, 'o-', color="b",
@@ -194,11 +216,13 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None, n
 
     return accuracy_test_scores_mean, precision_test_scores_mean, recall_test_scores_mean, train_sizes, plt
 
+
 fig, axes = plt.subplots(3, 1, figsize=(10, 15), constrained_layout=True)
 title = r"Learning curve SVM"
 estimator = svm.SVC(C=10, kernel="sigmoid", gamma='scale')
-acc, pre, rec, train_sizes_abs, plt = plot_learning_curve(estimator, title, Train_X_Tfidf, Train_Y, axes, ylim=(0.5, 1.01), cv=5, n_jobs=-1)
-plt.show(block = False)
+acc, pre, rec, train_sizes_abs, plt = plot_learning_curve(estimator, title, Train_X_Tfidf, Train_Y, axes,
+                                                          ylim=(0.5, 1.01), cv=5, n_jobs=-1)
+plt.show(block=False)
 
 for index in range(len(train_sizes_abs)):
     reverse_confusion_matrix(index, acc, pre, rec, train_sizes_abs)
@@ -214,8 +238,6 @@ SVM = svm.SVC(C=10.0, kernel='sigmoid', degree=2, gamma='scale')
 SVM.fit(Train_X_Tfidf, Train_Y)
 predictions_SVM = SVM.predict(Test_X_Tfidf)
 
-# print(search.best_estimator_)
-
 """
 Kernel functions give us similarity scores from higher dimensions
 The higher gamma is, the more likely overfitting occurs
@@ -225,42 +247,13 @@ True       negative	   TN       FP
            positive    FN       TP
 C: the penalty parameter, higher it is, the finer the boundaries between classification is
 
-C=1.0, RBF, DEGREE = 3, SCALE (Gamma is more related to rbf kernel)
-                       314      3
-                       30       52
-        SVM Accuracy Score -> 91.729323
-C=1.0, Poly, DEGREE= 2, SCALE
-                       314      28
-                       3        54
-        SVM Accuracy Score -> 92.23057644110276
-        2616.26 seconds
-C=1.0, Poly, DEGREE = 2, AUTO
-                       317      82
-                       0        0
-        SVM Accuracy Score -> 79.4486215538847
-        2704.6 seconds
-C=10.0, Poly, degree = 2, SCALE
-                        313     23
-                        4       59
-        SVM Accuracy Score -> 93.23308270676691           
-        3065.62 seconds
-C=50, Poly, degree 2, scale
-                        313     23
-                        4       59
-        SVM Accuracy Score -> 93.23308270676691
-        2893.85 seconds
-C=10.0, sigmoid', degree=2, 'scale'   (By GridSearchCV)
-                        306     17
-                        11      65
-        SVM Accuracy Score -> 92.98245614035088
-        2569.87 seconds ---    
-        ---------------------------with bigram model
-                        300     25
-                        17      57    
-        SVM Accuracy Score -> 89.463684           
 Recall/Sensitivity = TP / (TP + FN)
 Precision = TP / (TP + FP)
 Accuracy = (TP + TN) / (ALL FOUR)
+
+TN = 984, FP = 40, FN = 24, TP = 181
+SVM Accuracy Score -> 94.79251423921887
+---5631.23 seconds ---
 """
 
 # https://scikit-learn.org/stable/modules/model_evaluation.html#confusion-matrix
@@ -271,16 +264,3 @@ print("SVM Accuracy Score ->", accuracy_score(predictions_SVM, Test_Y) * 100)
 print("---%s seconds ---" % round(time.time() - start_time, 2))
 
 plt.show()
-# number of digits of precision for floating point
-# np.set_printoptions(precision=2)
-# titles_options = [("Confusion matrix, without normalization", None),
-#                   ("Normalized Confusion Matrix", 'true')]
-#
-# for title, normalize in titles_options:
-#     disp = plot_confusion_matrix(classifier, Test_X_Tfidf, Test_Y, display_labels = ['Febrile', 'Afebrile'],
-#                                  cmap=plt.cm.Blues,
-#                                  normalize=normalize)
-#     disp.ax_.set_title(title)
-#     print(title)
-#     print(disp.confusion_matrix)
-# plt.show()
