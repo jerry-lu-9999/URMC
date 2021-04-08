@@ -1,7 +1,6 @@
 import pandas as pd
 import re
 
-
 def regex(str):
     # False is no fever, true is fever
     if "GOLISANO CHILDREN'S HOSPITAL" in str or "After Visit Summary Signature Page" in str:

@@ -101,6 +101,7 @@ list_for_note = []
 list_for_missing_fever = []
 fever = None
 
+# data preprocessing part
 for index in range(len(corpus.index) - 1):
     if pd.notnull(corpus.iloc[index, corpus.columns.get_loc('pat_enc_csn_id')]):
         enc_id = corpus.iloc[index, corpus.columns.get_loc('pat_enc_csn_id')]
@@ -171,20 +172,17 @@ Test_X_Tfidf = Tfidf_vect.transform(Test_X)
 #                                                           ylim=(0.5, 1.01), cv=5, n_jobs=-1)
 # plt.show(block=False)
 
-# learning curve
+
 # param_grid = {'C': [0.1, 1, 10, 50],
 #               'kernel': ['rbf', 'poly', 'sigmoid'],
 #               'degree': [2, 3, 4],
 #               'gamma': ['scale']}
 # search = GridSearchCV(svm.SVC(), param_grid = param_grid, n_jobs=-1, verbose=2)
+# SVM parameters are determined by GridSearchCV method
 SVM = svm.SVC(C=10.0, kernel='sigmoid', degree=2, gamma='scale')
-# search.fit(Train_X_Tfidf, Train_Y)
 SVM.fit(Train_X_Tfidf, Train_Y)
 predictions_SVM = SVM.predict(Test_X_Tfidf)
-# print(search.best_estimator_)
-# print(predictions_SVM)
-# print(Test_Y)
-# print(confusion_matrix(predictions_SVM, Test_Y))
+
 tn, fp, fn, tp = confusion_matrix(predictions_SVM, Test_Y).ravel()
 print("TN = %d, FP = %d, FN = %d, TP = %d" % (tn, fp, fn, tp))
 
@@ -203,6 +201,7 @@ for i in range(len(predictions_SVM)):
     elif predictions_SVM[i] == 0 and Test_Y[i] == 1:
         FN += 1
         list_fn.append(list_of_ids[i])
+
 print("SVM Accuracy Score ->", accuracy_score(predictions_SVM, Test_Y) * 100)
 print("Manual TN = %d, FP = %d, FN = %d, TP = %d" % (TN, FP, FN, TP))
 print(list_fp)
